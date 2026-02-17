@@ -356,10 +356,11 @@ export default function App() {
                                   }
                                   placeholder={field.placeholder}
                                   rows={5}
+                                  resizable
                                   required={
                                     field.label !== "Interview Questions Asked"
                                   }
-                                  className="resize-y overflow-auto min-h-[100px] max-h-[600px]"
+                                  className="overflow-auto min-h-[100px] max-h-[600px]"
                                 />
                                 <p className="text-[10px] text-muted-foreground">
                                   Tip: Use line breaks for lists.
