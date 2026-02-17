@@ -148,34 +148,34 @@ const formats = [
 function formatOutput(selected, values) {
   switch (selected) {
     case "Interview":
-      return `**Task Status:** ${values.taskStatus || ""}
-**Interview Round:** ${values.interviewRound || ""}
-**Feedback:**
-${values.feedback || ""}
+      return `**Task Status:** ${values.taskStatus || ""}  
+**Interview Round:** ${values.interviewRound || ""}  
+**Feedback:**  
+${values.feedback || ""}  
 
-**Interview Questions Asked:**
+**Interview Questions Asked:**  
 ${values.questions
   ?.split("\n")
   .map((q, i) => (q.trim() ? `${i + 1}. ${q.trim()}` : ""))
   .join("\n")}`;
     case "Mock Interview":
-      return `**Task Status:** ${values.taskStatus || ""}
-**Feedback:**
-${values.feedback || ""}
+      return `**Task Status:** ${values.taskStatus || ""}  
+**Feedback:**  
+${values.feedback || ""}  
 
-**Mock Interview Questions:**
+**Mock Interview Questions:**  
 ${values.questions
   ?.split("\n")
   .map((q, i) => (q.trim() ? `${i + 1}. ${q.trim()}` : ""))
   .join("\n")}`;
     case "Resume Understanding":
-      return `**Task Status:** ${values.taskStatus || ""}
-**Feedback:**
+      return `**Task Status:** ${values.taskStatus || ""}  
+**Feedback:**  
 ${values.feedback || ""}`;
     case "Assessment":
-      return `**Task Status:** ${values.taskStatus || ""}
-**Assessment Type:** ${values.assessmentType || ""}
-**Feedback:**
+      return `**Task Status:** ${values.taskStatus || ""}  
+**Assessment Type:** ${values.assessmentType || ""}  
+**Feedback:**  
 ${values.feedback || ""}`;
     default:
       return "";
