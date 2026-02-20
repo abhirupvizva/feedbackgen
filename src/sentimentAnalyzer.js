@@ -32,7 +32,8 @@ const LEXICON = {
   "well-qualified": 4, "highly-qualified": 4, "overqualified": 2, // often positive but context-dependent
 
   // --- Positive (+3) ---
-  great: 3, strong: 3, confident: 3, articulate: 3, knowledgeable: 3,
+  great: 3, strong: 3, confident: 3, confidence: 3, articulate: 3, knowledgeable: 3,
+  fluent: 2, fluency: 2,
   proficient: 3, thorough: 3, insightful: 3, creative: 3, dedicated: 3,
   proactive: 3, enthusiastic: 3, skilled: 3, capable: 3, effective: 3,
   efficient: 3, accomplished: 3, competent: 3, resourceful: 3, motivated: 3,
@@ -122,6 +123,7 @@ const LEXICON = {
   reserved: -1, nervous: -1, anxious: -1, rushed: -1, missed: -1,
   forgot: -1, overlooked: -1, inconsistent: -1, repetitive: -1, generic: -1,
   late: -1, delayed: -1, distracted: -1, unfocused: -1, unclear: -1,
+  reading: -1,  // reading from notes/document during interview is a red flag
 
   // Added slight negatives (-1)
   ambiguous: -1, wordy: -1, rambling: -1, scattered: -1,
@@ -132,7 +134,7 @@ const LEXICON = {
   "light": -1, "thin": -1, "surface-level": -2,
 
   // --- Mildly negative (-2) ---
-  poor: -2, weak: -2, lacking: -2, insufficient: -2, unprepared: -2,
+  poor: -2, weak: -2, insufficient: -2, unprepared: -2,
   confused: -2, struggling: -2, difficult: -2, disappointing: -2, below: -2,
   underperformed: -2, incomplete: -2, inaccurate: -2, incorrect: -2,
   disorganized: -2, unfamiliar: -2, unresponsive: -2, uncomfortable: -2,
@@ -142,6 +144,7 @@ const LEXICON = {
   unwilling: -2, resistant: -2, defensive: -2, arrogant: -2,
 
   // Added mild negatives (-2)
+  inarticulate: -2, scripted: -2,
   mediocre: -2, subpar: -2, "needs-work": -2, "needs-improvement": -2,
   concern: -2, concerns: -2, issue: -2, issues: -2, gap: -2, gaps: -2,
   buggy: -2, flaky: -2, messy: -2, confusing: -2, unpolished: -2,
@@ -280,6 +283,42 @@ const PHRASE_LEXICON = {
   "needs improvement": -2,
   "needs work": -2,
   "missed requirements": -3,
+
+  // Confidence deficits
+  "lacked confidence": -3,
+  "lacks confidence": -3,
+  "lack of confidence": -3,
+  "low confidence": -3,
+  "no confidence": -4,
+  "not confident": -3,
+  "seemed nervous": -2,
+  "appeared nervous": -2,
+  "appeared hesitant": -2,
+
+  // Fluency deficits
+  "not fluent": -3,
+  "not very fluent": -3,
+  "lacked fluency": -3,
+  "poor fluency": -3,
+  "not articulate": -3,
+  "not very articulate": -3,
+
+  // Reading from notes / scripted answers (major interview red flag)
+  "reading from": -2,
+  "reading the document": -3,
+  "reading from document": -3,
+  "followed the document": -2,
+  "seemed like reading": -2,
+  "seemed to be reading": -3,
+  "appeared to be reading": -2,
+  "read from": -2,
+
+  // Technical/session issues
+  "network issues": -2,
+  "connection issues": -2,
+  "audio issues": -2,
+  "video issues": -1,
+  "technical issues": -2,
 };
 
 // Negation words that flip sentiment of the next word/phrase
@@ -288,6 +327,8 @@ const NEGATORS = new Set([
   "nor", "nowhere", "cannot", "can't", "couldn't", "didn't",
   "doesn't", "don't", "hasn't", "haven't", "hadn't", "isn't",
   "wasn't", "weren't", "won't", "wouldn't", "shouldn't",
+  // Lack-based negators: flip the score of the following sentiment word
+  "lacked", "lacks", "lack", "lacking", "without", "absent",
 ]);
 
 // Intensifiers that amplify the next word/phrase score

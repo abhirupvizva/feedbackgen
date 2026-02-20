@@ -75,12 +75,12 @@ export default function SentimentDisplay({ result }) {
   return (
     <Card className={`border ${config.border} ${config.bg} shadow-md overflow-hidden`}>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3">
           <CardTitle className="text-lg font-medium flex items-center gap-2">
             <span className="text-2xl">{config.emoji}</span>
             Sentiment Analysis
           </CardTitle>
-          <div className={`text-sm font-bold px-3 py-1 rounded-full bg-background border ${config.border} ${config.text}`}>
+          <div className={`self-start text-sm font-bold px-3 py-1 rounded-full bg-background border ${config.border} ${config.text}`}>
             {result.label}
           </div>
         </div>

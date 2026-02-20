@@ -2,10 +2,13 @@ import { useState, useRef, useEffect } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import toast, { Toaster } from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 
 /* eslint-disable no-unused-vars */
 import { motion, AnimatePresence } from "framer-motion";
 import { analyzeSentiment } from "./sentimentAnalyzer";
+import { analyzeWithGroq } from "./groqAnalyzer";
 import SentimentDisplay from "./SentimentDisplay";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import Label from "./components/ui/label";
@@ -146,37 +149,51 @@ const formats = [
    Output formatter (unchanged)
 ------------------------------------------- */
 function formatOutput(selected, values) {
+  const normalizeQuestions = (text) => {
+    if (!text || !text.trim()) return "1. NA";
+    const items = text
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      .map((l) => l.replace(/^(\d+\.)\s+/, "").replace(/^[-*•]\s+/, ""));
+    if (items.length === 0) return "1. NA";
+    return items.map((l, i) => `${i + 1}. ${l}`).join("\n");
+  };
   switch (selected) {
     case "Interview":
-      return `**Task Status:** ${values.taskStatus || ""}
-**Interview Round:** ${values.interviewRound || ""}
-**Feedback:**
-${values.feedback || ""}
-
-**Interview Questions Asked:**
-${values.questions
-  ?.split("\n")
-  .map((q, i) => (q.trim() ? `${i + 1}. ${q.trim()}` : ""))
-  .join("\n")}`;
+      return [
+        `**Task Status:** ${values.taskStatus || "NA"}`,
+        `**Interview Round:** ${values.interviewRound || "NA"}`,
+        `**Feedback:**`,
+        `${values.feedback?.trim() || "NA"}`,
+        ``,
+        `**Interview Questions Asked:**`,
+        ``,
+        normalizeQuestions(values.questions),
+      ].join("\n");
     case "Mock Interview":
-      return `**Task Status:** ${values.taskStatus || ""}
-**Feedback:**
-${values.feedback || ""}
-
-**Mock Interview Questions:**
-${values.questions
-  ?.split("\n")
-  .map((q, i) => (q.trim() ? `${i + 1}. ${q.trim()}` : ""))
-  .join("\n")}`;
+      return [
+        `**Task Status:** ${values.taskStatus || "NA"}`,
+        `**Feedback:**`,
+        `${values.feedback?.trim() || "NA"}`,
+        ``,
+        `**Mock Interview Questions:**`,
+        ``,
+        normalizeQuestions(values.questions),
+      ].join("\n");
     case "Resume Understanding":
-      return `**Task Status:** ${values.taskStatus || ""}
-**Feedback:**
-${values.feedback || ""}`;
+      return [
+        `**Task Status:** ${values.taskStatus || "NA"}`,
+        `**Feedback:**`,
+        `${values.feedback?.trim() || "NA"}`,
+      ].join("\n");
     case "Assessment":
-      return `**Task Status:** ${values.taskStatus || ""}
-**Assessment Type:** ${values.assessmentType || ""}
-**Feedback:**
-${values.feedback || ""}`;
+      return [
+        `**Task Status:** ${values.taskStatus || "NA"}`,
+        `**Assessment Type:** ${values.assessmentType || "NA"}`,
+        `**Feedback:**`,
+        `${values.feedback?.trim() || "NA"}`,
+      ].join("\n");
     default:
       return "";
   }
@@ -190,6 +207,7 @@ export default function App() {
   const [fieldValues, setFieldValues] = useState({});
   const [output, setOutput] = useState("");
   const [sentimentResult, setSentimentResult] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const outputRef = useRef(null);
 
   // Restore cache on mount
@@ -242,7 +260,20 @@ export default function App() {
   const handleGenerate = async () => {
     setOutput(formatOutput(selectedFormat, fieldValues));
     const feedbackText = fieldValues.feedback || "";
-    setSentimentResult(analyzeSentiment(feedbackText));
+    if (!feedbackText.trim()) return;
+
+    setIsAnalyzing(true);
+    setSentimentResult(null);
+    try {
+      const result = await analyzeWithGroq(feedbackText);
+      setSentimentResult(result);
+    } catch (err) {
+      console.error("Groq analysis failed, falling back to local analyzer:", err);
+      toast.error("AI analysis failed – using local analyzer.");
+      setSentimentResult(analyzeSentiment(feedbackText));
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleCopy = () => {
@@ -382,8 +413,8 @@ export default function App() {
                       </motion.div>
                     </AnimatePresence>
 
-                    <Button type="submit" className="w-full">
-                      Generate Feedback
+                    <Button type="submit" className="w-full" disabled={isAnalyzing}>
+                      {isAnalyzing ? "Analyzing…" : "Generate Feedback"}
                     </Button>
                   </form>
                 </CardContent>
@@ -399,8 +430,24 @@ export default function App() {
             >
               {/* Sentiment Display */}
               <AnimatePresence>
-                {sentimentResult && (
+                {isAnalyzing && (
                   <motion.div
+                    key="analyzing"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="rounded-xl border border-border/50 bg-muted/30 p-6 flex items-center gap-3 text-muted-foreground text-sm"
+                  >
+                    <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    AI is analyzing the feedback…
+                  </motion.div>
+                )}
+                {!isAnalyzing && sentimentResult && (
+                  <motion.div
+                    key="result"
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
@@ -427,7 +474,9 @@ export default function App() {
                           className="p-6 max-h-[500px] overflow-y-auto whitespace-pre-wrap font-mono text-sm leading-relaxed"
                           ref={outputRef}
                         >
-                          <ReactMarkdown>{output}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                            {output}
+                          </ReactMarkdown>
                         </div>
                       </CardContent>
                       <CardFooter className="bg-muted/30 p-4 flex gap-3 justify-end">
@@ -445,7 +494,7 @@ export default function App() {
                 <div className="hidden lg:flex h-full min-h-[400px] items-center justify-center rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
                   <div className="max-w-xs">
                     <p className="text-lg font-medium">Ready to Generate</p>
-                    <p className="text-sm mt-2">Fell The form to get the Sentiment Analysis.</p>
+                    <p className="text-sm mt-2">Fill the form to get the Sentiment Analysis.</p>
                   </div>
                 </div>
               )}
