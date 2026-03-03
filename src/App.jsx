@@ -163,34 +163,30 @@ function formatOutput(selected, values) {
         `**Interview Round:** ${values.interviewRound || "NA"}`,
         `**Feedback:**`,
         `${values.feedback?.trim() || "NA"}`,
-        ``,
         `**Interview Questions Asked:**`,
-        ``,
         normalizeQuestions(values.questions),
-      ].join("\n");
+      ].join("\n\n");
     case "Mock Interview":
       return [
         `**Task Status:** ${values.taskStatus || "NA"}`,
         `**Feedback:**`,
         `${values.feedback?.trim() || "NA"}`,
-        ``,
         `**Mock Interview Questions:**`,
-        ``,
         normalizeQuestions(values.questions),
-      ].join("\n");
+      ].join("\n\n");
     case "Resume Understanding":
       return [
         `**Task Status:** ${values.taskStatus || "NA"}`,
         `**Feedback:**`,
         `${values.feedback?.trim() || "NA"}`,
-      ].join("\n");
+      ].join("\n\n");
     case "Assessment":
       return [
         `**Task Status:** ${values.taskStatus || "NA"}`,
         `**Assessment Type:** ${values.assessmentType || "NA"}`,
         `**Feedback:**`,
         `${values.feedback?.trim() || "NA"}`,
-      ].join("\n");
+      ].join("\n\n");
     default:
       return "";
   }

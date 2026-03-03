@@ -86,6 +86,13 @@ export default function SentimentDisplay({ result }) {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Warning banner */}
+        {result.warning && (
+          <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-600 dark:text-amber-400 font-medium">
+            {result.warning}
+          </div>
+        )}
+
         {/* Main score */}
         <div className="flex items-end gap-2 mb-6">
           <span className="text-4xl font-bold tracking-tighter">

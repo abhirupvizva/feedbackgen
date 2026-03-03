@@ -369,12 +369,84 @@ function buildNgrams(tokens, n) {
 }
 
 /**
+ * Vague / generic phrases that don't count as detailed feedback.
+ * If "Completed" task feedback is mostly these without real details, penalize the score.
+ */
+const VAGUE_PATTERNS = [
+  // "interview went well / was good / gone great" etc.
+  /\binterview\s+(went|gone|was|is|seemed)\s+(well|good|great|fine|okay|ok|smooth|nice|decent|alright)\b/i,
+  /\b(went|gone|was|seemed)\s+(well|good|great|fine|okay|ok|smooth|nice|decent|alright)\b/i,
+  /\b(good|great|nice|fine|decent|smooth|pleasant)\s+(interview|session|call|round|discussion|meeting|interaction)\b/i,
+  // "no issues / nothing much"
+  /\b(no\s+issues?|nothing\s+(much|special|to\s+report|to\s+add|significant))\b/i,
+  // "everything was fine / all good"
+  /\b(everything\s+(was|went|is|seems?)\s+(fine|good|well|okay|ok|smooth|great|nice|normal))\b/i,
+  /\bit\s+(was|is|seemed|went)\s+(good|great|fine|okay|ok|nice|smooth|alright|decent)\b/i,
+  /\ball\s+(good|well|fine|okay|ok|smooth|clear)\b/i,
+  /\boverall\s+(good|great|fine|okay|ok|positive|smooth|nice|decent)\b/i,
+  // "did well / performed well"
+  /\b(did|does|doing)\s+(well|good|great|fine|okay|ok|nicely)\b/i,
+  /\bperformed\s+(well|good|great|fine|okay|ok|nicely|decently)\b/i,
+  // "candidate was good / seems fine"
+  /\b(candidate|he|she|they)\s+(was|is|were|seems?|look(s|ed)?)\s+(good|great|fine|okay|ok|nice|decent|alright|average)\b/i,
+  // "no concerns / no red flags"
+  /\bno\s+(concerns?|red\s*flags?|problems?|complaints?|negatives?|objections?)\b/i,
+  // "satisfied / happy with"
+  /\b(satisfied|happy|pleased)\s+(with)?\s*(the)?\s*(interview|session|call|round|performance|candidate)?\b/i,
+  // "can proceed / can move / looks okay"
+  /\b(can|should|may)\s+(proceed|move|go)\s*(forward|ahead|to\s+next)?\b/i,
+  // "went as expected / as planned"
+  /\b(went|was|proceeded)\s+(as\s+)?(expected|planned|scheduled|normal)\b/i,
+  // Short generic sentences
+  /\b(thumbs\s+up|lgtm|looks\s+good|sounds\s+good|all\s+set|no\s+feedback)\b/i,
+  // "interview completed / done / finished" without any detail
+  /\b(interview|session|call|round)\s+(completed|done|finished|conducted|taken|over)\b/i,
+  // "positive feedback / good feedback"
+  /\b(positive|good|great|nice)\s+(feedback|impression|vibe|feeling)\b/i,
+  // "not bad / okay-ish"
+  /\b(not\s+bad|okay-?ish|fair\s+enough|could\s+be\s+worse|so-?so|average)\b/i,
+];
+
+/**
+ * Detail indicators — words/phrases that show the feedback contains actual specifics
+ * about the candidate's performance, skills, answers, etc.
+ */
+const DETAIL_INDICATORS = [
+  // Technical skill / technology mentions
+  /\b(java|python|react|angular|vue|sql|nosql|mongodb|api|rest|graphql|algorithm|data\s*structure|system\s*design|coding|html|css|javascript|typescript|node|express|spring|django|flask|aws|azure|gcp|cloud|docker|kubernetes|k8s|database|frontend|backend|fullstack|full.stack|devops|ci.?cd|git|linux|networking|tcp|http|microservices|oop|solid|design\s*pattern|mvc|mvvm)\b/i,
+  // Programming / CS concepts
+  /\b(array|linked\s*list|hash\s*map|tree|graph|stack|queue|heap|recursion|dynamic\s*programming|sorting|searching|binary\s*search|bfs|dfs|complexity|big\s*o|time\s*complexity|space\s*complexity|concurrency|threading|async|promise|callback|closure|scope|prototype|inheritance|polymorphism|encapsulation|abstraction)\b/i,
+  // Performance / answer specifics
+  /\b(answer(ed|s|ing)?|explain(ed|s|ing)?|solv(ed|es|ing)|approach(ed|es|ing)?|demonstrat(ed|es|ing)|discuss(ed|es|ing)?|describ(ed|es|ing)?|implement(ed|s|ing)?|debug(ged|ging)?|optimiz(ed|es|ing)|analyz(ed|es|ing)|cod(ed|ing)|wrote|built|design(ed|ing)?|architect(ed|ing)?|refactor(ed|ing)?|test(ed|ing)?|deploy(ed|ing)?)\b/i,
+  // Communication / soft skill specifics
+  /\b(communicat(ed|ion|es|ing)|articulat(ed|e|ion|ing)|clarif(ied|ies|ying)|express(ed|es|ing)?|present(ed|ation|ing)?|fluency|fluent|stammer(ed|ing)?|stutter(ed|ing)?|spoke|spoken|verbal|non.?verbal|listen(ed|ing)?|responsive|clarity|concise|structured\s*answer|thought\s*process|walk(ed)?\s*through)\b/i,
+  // Behavioral / leadership specifics
+  /\b(team(work)?|collaborat(ed|ion|ing|ive)|leadership|leader|ownership|initiative|problem.solving|decision.making|conflict\s*resolution|pressure|deadline|priorit(y|ize|ization)|mentor(ed|ing)?|manag(ed|ing|ement)|delegat(ed|ion|ing)|stakeholder|cross.?functional|agile|scrum|sprint|standup|retrospective)\b/i,
+  // Concrete observations / assessment
+  /\b(example|scenario|question|topic|concept|project|experience|background|skill(s|set)?|strength|weakness|area|improvement|suggestion|gap|knowledge|depth|breadth|understanding|grasp|familiarity|proficiency|expertise|competency|capability|maturity|seniority|level|rating)\b/i,
+  // Round / progression / hiring decision
+  /\b(next\s+round|move\s+forward|proceed|shortlist(ed)?|reject(ed)?|hold|on.?hold|select(ed)?|recommend(ed|ation)?|not\s+recommend|advance|promote|hire|no.?hire|strong\s+hire|lean\s+hire|lean\s+no|strong\s+no|inclined|pass|fail|borderline|pipeline|offer)\b/i,
+  // Confidence / demeanor / body language
+  /\b(confident|confidence|nervous(ness)?|hesitant|hesitation|calm|composed|poise|eye\s*contact|body\s*language|energy|enthusiasm|enthusiastic|attitude|demeanor|posture|gesture|tone|pace|rapport|engagement|engaged|disengaged|distracted|attentive|focused|unfocused)\b/i,
+  // Scoring / rating language
+  /\b(\d+\s*\/\s*\d+|\d+\s*out\s*of\s*\d+|score(d)?|rating|rated|grade(d)?|marks?|points?|percent|percentile|band|tier|rank(ed|ing)?|benchmark|criteria|rubric|matrix|scorecard)\b/i,
+  // Specific feedback phrases
+  /\b(needs\s+to\s+improve|should\s+work\s+on|struggled\s+with|excelled\s+(at|in)|strong\s+in|weak\s+in|good\s+at|poor\s+at|lacks?|lacking|missed|overlooked|covered|addressed|handled|tackled|navigated|managed|failed\s+to|unable\s+to|able\s+to|capable\s+of)\b/i,
+  // Domain / role specifics
+  /\b(product|marketing|sales|finance|accounting|hr|human\s*resources|operations|support|customer|client|vendor|partner|business|strategy|analytics|data|machine\s*learning|ai|artificial\s*intelligence|nlp|deep\s*learning|ml|security|compliance|governance|audit|risk|quality|testing|qa|ux|ui|design|research|engineering|infrastructure|platform|mobile|web|desktop|embedded|iot)\b/i,
+];
+
+const MIN_WORDS_COMPLETED = 30;
+
+/**
  * Analyze sentiment of the given text.
  *
  * @param {string} text - The text to analyze
+ * @param {Object} [context] - Optional context from the form fields
+ * @param {string} [context.taskStatus] - e.g. "Completed", "Cancelled", etc.
  * @returns {Object} Analysis result with scores and details
  */
-export function analyzeSentiment(text) {
+export function analyzeSentiment(text, context = {}) {
   if (!text || text.trim().length === 0) {
     return {
       score: 0,
@@ -388,6 +460,7 @@ export function analyzeSentiment(text) {
       wordCount: 0,
       analyzedWords: 0,
       phraseHits: [],
+      warning: null,
     };
   }
 
@@ -499,7 +572,38 @@ export function analyzeSentiment(text) {
 
   // Normalize to -100..+100
   const maxPossible = Math.max(analyzedWords * 5, 1);
-  const normalizedScore = Math.max(-100, Math.min(100, (totalScore / maxPossible) * 100));
+  let normalizedScore = Math.max(-100, Math.min(100, (totalScore / maxPossible) * 100));
+
+  // --- 3) Context-aware adjustments for "Completed" tasks ---
+  let warning = null;
+  const taskStatus = context.taskStatus;
+
+  if (taskStatus === "Completed") {
+    // Check minimum word count
+    if (tokens.length < MIN_WORDS_COMPLETED) {
+      const penalty = -30;
+      totalScore += penalty;
+      negativeScore += Math.abs(penalty);
+      warning = `Feedback too short for a completed task (${tokens.length}/${MIN_WORDS_COMPLETED} words). Add more details.`;
+    }
+
+    // Check if feedback is vague (matches vague patterns but lacks detail indicators)
+    const vagueMatchCount = VAGUE_PATTERNS.filter((p) => p.test(text)).length;
+    const detailMatchCount = DETAIL_INDICATORS.filter((p) => p.test(text)).length;
+
+    if (vagueMatchCount > 0 && detailMatchCount < 2) {
+      // Feedback is generic without real details — heavy penalty
+      const vaguePenalty = -20 * vagueMatchCount;
+      totalScore += vaguePenalty;
+      negativeScore += Math.abs(vaguePenalty);
+      if (!warning) {
+        warning = "Feedback is too vague. Include specific details about the candidate's performance, skills, and answers.";
+      }
+    }
+
+    // Recalculate after penalties
+    normalizedScore = Math.max(-100, Math.min(100, (totalScore / Math.max(analyzedWords * 5, 1)) * 100));
+  }
 
   // Determine label
   let label;
@@ -523,5 +627,6 @@ export function analyzeSentiment(text) {
     wordCount: tokens.length,
     analyzedWords,
     phraseHits: phraseHits.sort((a, b) => Math.abs(b.score) - Math.abs(a.score)),
+    warning,
   };
 }
